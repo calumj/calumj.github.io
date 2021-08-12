@@ -1,0 +1,63 @@
+<html>
+
+<head>
+    <script>
+        var w;
+        if (typeof (Worker) !== "undefined") {
+            if (typeof (w) == "undefined") {
+                w = new Worker("webworker.js");
+                document.getElementById("webWorkerRes").innerHTML = 'started...';
+            }
+            w.onmessage = function (event) {
+                let obj = JSON.parse(event.data);
+                console.log('webworker', event.data);
+                document.getElementById("webWorkerRes").innerHTML = event.data;
+            };
+        } else {
+            document.getElementById("webWorkerRes").innerHTML = "Sorry! No Web Worker support.";
+        }
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(function () {
+                    console.log('sw registered');
+                })
+                .catch(function (e) {
+                    console.log('sw-error:', e);
+                });
+        } else {
+            console.error('this browser does not support service workers');
+        }
+        const broadcast = new BroadcastChannel('sw-channel');
+        // Listen to the response
+        broadcast.onmessage = function (event) {
+            if (event.data) {
+                console.log('serviceworker', event.data);
+                document.getElementById('serviceWorkerRes').innerHTML = JSON.stringify(event.data, null, 2);
+            }
+        }
+        var data = {
+            userAgent: navigator.userAgent,
+            appVersion: navigator.appVersion,
+            platform: navigator.platform,
+            webdriver: navigator.webdriver,
+            deviceMemory: navigator.deviceMemory,
+            hardwareConcurrency: navigator.hardwareConcurrency,
+            cpuClass: navigator.cpuClass,
+            vendor: navigator.vendor,
+            language: navigator.language,
+            languages: navigator.languages,
+        }
+
+        document.getElementById('browserRes').innerHTML = JSON.stringify(data, null, 2);
+
+    </script>
+
+</head>
+
+<body>
+    <div id="browserRes"></div>
+    <div id="webWorkerRes"></div>
+    <div id="serviceWorkerRes"></div>
+</body>
+
+</html>
