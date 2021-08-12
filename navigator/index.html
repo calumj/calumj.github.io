@@ -42,7 +42,7 @@
             document.getElementById("webWorkerRes").innerHTML = "Sorry! No Web Worker support.";
         }
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./service-worker.js')
+            navigator.serviceWorker.register('./serviceworker.js')
                 .then(function () {
                     console.log('sw registered');
                 })
