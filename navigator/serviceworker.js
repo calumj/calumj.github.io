@@ -13,6 +13,6 @@ var data = {
   
   const broadcast = new BroadcastChannel('sw-channel');
   
-  setInterval(() => {
+  setTimeout(() => {
     broadcast.postMessage(data);
   }, 500);
