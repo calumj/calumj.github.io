@@ -1,6 +1,15 @@
 <html>
 
 <head>
+
+
+</head>
+
+<body>
+    <div id="browserRes"></div>
+    <div id="webWorkerRes"></div>
+    <div id="serviceWorkerRes"></div>
+
     <script>
         var w;
         if (typeof (Worker) !== "undefined") {
@@ -51,13 +60,7 @@
         document.getElementById('browserRes').innerHTML = JSON.stringify(data, null, 2);
 
     </script>
-
-</head>
-
-<body>
-    <div id="browserRes"></div>
-    <div id="webWorkerRes"></div>
-    <div id="serviceWorkerRes"></div>
+    
 </body>
 
 </html>
