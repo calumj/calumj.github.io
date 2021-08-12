@@ -15,4 +15,4 @@ var data = {
   
   setTimeout(() => {
     broadcast.postMessage(data);
-  }, 500);
+  }, 2000);
