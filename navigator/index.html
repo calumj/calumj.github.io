@@ -41,25 +41,25 @@
         } else {
             document.getElementById("webWorkerRes").innerHTML = "Sorry! No Web Worker support.";
         }
-        // if ('serviceWorker' in navigator) {
-        //     navigator.serviceWorker.register('./serviceworker.js')
-        //         .then(function () {
-        //             console.log('sw registered');
-        //         })
-        //         .catch(function (e) {
-        //             console.log('sw-error:', e);
-        //         });
-        // } else {
-        //     console.error('this browser does not support service workers');
-        // }
-        // const broadcast = new BroadcastChannel('sw-channel');
-        // // Listen to the response
-        // broadcast.onmessage = function (event) {
-        //     if (event.data) {
-        //         console.log('serviceworker', event.data);
-        //         document.getElementById('serviceWorkerRes').innerHTML = JSON.stringify(event.data, null, 2);
-        //     }
-        // }
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./serviceworker.js')
+                .then(function () {
+                    console.log('sw registered');
+                })
+                .catch(function (e) {
+                    console.log('sw-error:', e);
+                });
+        } else {
+            console.error('this browser does not support service workers');
+        }
+        const broadcast = new BroadcastChannel('sw-channel');
+        // Listen to the response
+        broadcast.onmessage = function (event) {
+            if (event.data) {
+                console.log('serviceworker', event.data);
+                document.getElementById('serviceWorkerRes').innerHTML = JSON.stringify(event.data, null, 2);
+            }
+        }
         var data = {
             userAgent: navigator.userAgent,
             appVersion: navigator.appVersion,
