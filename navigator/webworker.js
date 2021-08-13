@@ -1,3 +1,4 @@
+console.log("webworker firing")
 
 var workerData = {
     userAgent: navigator.userAgent,
@@ -12,6 +13,7 @@ var workerData = {
     languages: navigator.languages,
   }
   
+
   setTimeout(() => {
     postMessage(JSON.stringify(workerData, null, 2));
   }, 100);
