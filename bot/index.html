@@ -1,0 +1,399 @@
+<html>
+
+<head>
+    <style>
+        body,
+        pre {
+            font-family: monospace;
+        }
+
+        main {
+            margin: 0 auto;
+            max-width: 1000px;
+            ;
+        }
+
+        .result {
+            width: 730px;
+            word-wrap: break-word;
+        }
+
+        #test-results {
+            background-color: #f6f5fa
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #333;
+        }
+
+        table tr th,
+        table tr td {
+            padding: 10px;
+            border-right: 2px solid #333;
+            border-bottom: 1px solid #333;
+
+        }
+
+        table tbody tr:nth-of-type(2n+1) {
+            background-color: #eeebf5;
+        }
+
+        table tr:first-of-type th {
+            border: 2px solid #333;
+        }
+
+        .success {
+            background-color: #a1d8a1;
+        }
+
+        .fail {
+            background-color: #d8a1a1;
+        }
+
+        .unsure {
+            background-color: #e8f897;
+        }
+
+        tr:last-of-type>td {
+            border-bottom: 2px solid #333;
+        }
+
+        tr>td:first-of-type {
+            border-left: 2px solid #333;
+        }
+
+        pre {
+            max-height: 150px;
+            overflow-y: scroll;
+            background-color: #f6f5fa;
+            border: 2px solid #333;
+            margin: 0;
+        }
+
+        .json {
+            display: block;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+    </style>
+
+</head>
+
+<body>
+    <main>
+        <table id="test-results">
+            <thead>
+                <tr>
+                    <th>Test</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+
+        <span class="json">JSON</span>
+        <pre id="test-results-json"></pre>
+
+        <span class="json">BotD Fingerprint</span>
+        <pre id="botd-fingerprint-json"></pre>
+    </main>
+</body>
+
+<script type="javascript/worker" id="web-worker">
+    const data = {
+        userAgent: navigator.userAgent,
+        appVersion: navigator.appVersion,
+        platform: navigator.platform,
+        webdriver: navigator.webdriver,
+        deviceMemory: navigator.deviceMemory,
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        cpuClass: navigator.cpuClass,
+        vendor: navigator.vendor,
+        language: navigator.language,
+        languages: navigator.languages,
+        userAgentDataPlatform: navigator?.userAgentData?.platform
+    }
+    
+    setTimeout(() => {
+        postMessage(data);
+    }, 100);
+  </script>
+
+
+<script>
+    (async () => {
+        const botd = await import('https://openfpcdn.io/botd/v1').then((Botd) => Botd.load({ monitoring: false }))
+
+
+        const compareWorkerData = (workerData) => {
+            const browserData = {
+                userAgent: navigator.userAgent,
+                appVersion: navigator.appVersion,
+                platform: navigator.platform,
+                // webdriver: navigator.webdriver,
+                deviceMemory: navigator.deviceMemory,
+                hardwareConcurrency: navigator.hardwareConcurrency,
+                cpuClass: navigator.cpuClass,
+                // vendor: navigator.vendor,
+                language: navigator.language,
+                // languages: navigator.languages,
+                userAgentDataPlatform: navigator?.userAgentData?.platform
+            }
+            let messages = [];
+            Object.keys(browserData).forEach(key => {
+                if (workerData?.[key] !== browserData?.[key]) {
+                    messages.push(`${key} mismatch:<br><b>Browser</b>:${browserData?.[key]}<br><b>Worker</br>:${workerData?.[key]}<br><br>`)
+                }
+            })
+
+            return {
+                result: messages.length ? 'fail' : 'success',
+                value: messages.length ? messages.join('') : 'Navigator matches'
+            }
+        }
+
+        const addResultRow = (tr) => {
+            const tbody = document.querySelector('#test-results tbody');
+            tbody.insertAdjacentHTML('beforeend', `<tr id="${tr.id}"><td>${tr.name}</td><td class="result ${tr.result}">${tr.value}</td></tr>`
+            );
+        };
+
+        const testUserAgent = () => {
+            const userAgent = window.navigator.userAgent;
+            return {
+                id: 'user-agent',
+                name: 'User Agent',
+                value: userAgent,
+                result: /(PhantomJS|Headless|Electron|slimerjs)/i.test(userAgent) ? 'fail' : 'success',
+            };
+        };
+
+        const testWebdriver = () => {
+            const webdriver = window.navigator.webdriver;
+            return {
+                id: 'webdriver',
+                name: 'Webdriver',
+                value: webdriver,
+                result:
+                    typeof webdriver === 'undefined' ? 'unsure' : webdriver ? 'fail' : 'success',
+            };
+        };
+
+        const testPermissions = async () => {
+            const status = await navigator.permissions.query({ name: 'notifications' });
+            const permission = window?.Notification?.permission;
+
+            return {
+                id: 'notification',
+                name: 'Notification Permissions',
+                value: status.state,
+                result: (permission === 'denied' && status.state === 'prompt' || typeof permission === 'undefined') ? 'fail' : 'success',
+            };
+        };
+
+        const testChrome = () => {
+            const expected = '{"app":{"isInstalled":false,"InstallState":{"DISABLED":"disabled","INSTALLED":"installed","NOT_INSTALLED":"not_installed"},"RunningState":{"CANNOT_RUN":"cannot_run","READY_TO_RUN":"ready_to_run","RUNNING":"running"}}}';
+            const stringified = JSON.stringify(window.chrome).trim();
+            return {
+                id: 'chrome',
+                name: 'Chrome',
+                value: stringified,
+                result: !window.chrome ? 'fail' : stringified !== expected ? 'fail' : 'success',
+            };
+        };
+
+        const testPlugins = () => {
+            return {
+                id: 'plugins',
+                name: 'Plugins',
+                value: window.navigator.plugins.length,
+                result: window.navigator.plugins.length === 0 ? 'fail' : 'success',
+            };
+        };
+        const testPluginType = () => {
+
+            return {
+                id: 'plugin-type',
+                name: 'Plugin Type',
+                value: (window?.navigator?.plugins instanceof PluginArray) ? "PluginArray" : typeof window?.navigator?.plugins,
+                result: !(window?.navigator?.plugins instanceof PluginArray) && window?.navigator?.plugins?.[0].toString() == '[object Plugin]' ? 'fail' : 'success',
+            };
+        };
+        const testLanguages = () => {
+
+            return {
+                id: 'languages',
+                name: 'Languages',
+                value: JSON.stringify(window?.navigator?.languages),
+                result: !window?.navigator?.languages.length ? 'fail' : 'success',
+            };
+        };
+
+        const testWindow = () => {
+            const isAutomation = Object.getOwnPropertyNames(window).some((key) => {
+                return ['domAutomation',
+                    'domAutomationController',
+                    'webdriver',
+                    '__webdriverFunc',
+                    '__lastWatirAlert',
+                    '__lastWatirConfirm',
+                    '__lastWatirPrompt',
+                    '_WEBDRIVER_ELEM_CACHE',
+                    'ChromeDriverw',
+                    /^([a-z]){3}_.*_(Array|Promise|Symbol)$/,
+                    '_Selenium_IDE_Recorder', '_selenium', 'calledSelenium',
+                    'wdioElectron'].includes(key)
+            })
+            return {
+                id: 'window-leak',
+                name: 'Window Leak',
+                value: isAutomation,
+                result: isAutomation ? 'fail' : 'success',
+            };
+        }
+
+        const testUserAgentData = async () => {
+            return {
+                id: 'user-agent-data',
+                name: 'User Agent Data Platform',
+                value: navigator.userAgentData?.platform === '' ? 'EMPTY' : navigator.userAgentData?.platform,
+                result: 'userAgentData' in navigator && (navigator.userAgentData?.platform === '' || await navigator.userAgentData.getHighEntropyValues(['platform']).platform === '') ? 'fail' : 'success',
+            };
+        }
+
+        const testChromeRuntime = () => {
+            return {
+                id: 'chrome-runtime',
+                name: 'Chrome Runtime',
+                value: JSON.stringify(window?.chrome?.runtime ?? {}),
+                result: ('chrome' in window && 'runtime' in chrome) ? 'fail' : 'success',
+            };
+        }
+        const testBotD = async () => {
+            let result;
+            try {
+                result = await botd.detect()
+            } catch (err) {
+                result = { error: err }
+            }
+            return {
+                id: 'botd',
+                name: '<a href="https://github.com/fingerprintjs/BotD">BotD</a>',
+                value: JSON.stringify(result ?? {}),
+                result: result?.bot ? 'fail' : 'success',
+            };
+        }
+
+        const fetchJson = async (url) => {
+            const response = await fetch(url)
+            return await response.json();
+        }
+        const testTimezones = async () => {
+            const ipInfo = await fetchJson('https://api.geoapify.com/v1/ipinfo?&apiKey=b145db361024458c9454d512f0f2d665');
+
+            const { longitude, latitude } = ipInfo?.location;
+
+            const tz = await fetchJson(`https://api.timezonedb.com/v2.1/get-time-zone?key=TEL0EAHBDKWQ&format=json&by=position&lat=${latitude}&lng=${longitude}`);
+
+            const ipTimezoneName = tz?.zoneName;
+
+            const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            return {
+                id: 'timezone',
+                name: 'IP/Browser Timezone',
+                value: `IP Timezone: ${ipTimezoneName}<br>Browser Timezone: ${browserTimezone}`,
+                result: ipTimezoneName.toLowerCase() !== browserTimezone.toLowerCase() ? 'fail' : 'success',
+            };
+        }
+
+        const testWebWorker = async () => {
+
+            const webworkerPromise = new Promise((resolve, reject) => {
+
+                const worker = new Worker(
+                    URL.createObjectURL(
+                        new Blob([document.getElementById('web-worker').textContent], { type: "text/javascript" })
+                    )
+                );
+
+                worker.onmessage = function (event) {
+                    console.log("web-worker:", event.data)
+                    resolve(event.data)
+                };
+            })
+
+            const webworkerNavigator = await webworkerPromise
+
+            const { value, result } = compareWorkerData(webworkerNavigator)
+            return {
+                id: 'web-worker-navigator',
+                name: 'Web Worker Navigator',
+                value,
+                result
+            };
+        }
+        const testServiceWorker = async () => {
+
+            const serviceWorkerPromise = new Promise((resolve, reject) => {
+
+                const messageChannel = new MessageChannel();
+                const broadcast = new BroadcastChannel('service-worker');
+
+                const worker = navigator.serviceWorker.register('./service-worker.js').then(() => {
+
+                    broadcast.postMessage({ type: 'request' })
+
+                    broadcast.onmessage = function (event) {
+                        if (event.data.data) {
+                            console.log("service-worker:", event.data.data)
+                            resolve(event.data.data)
+                        }
+                    };
+                }).catch((err) => { console.log("service worker error", err) });
+            })
+
+            const serviceWorkerNavigator = await serviceWorkerPromise
+
+            const { value, result } = compareWorkerData(serviceWorkerNavigator)
+            return {
+                id: 'service-worker-navigator',
+                name: 'Service Worker Navigator',
+                value,
+                result
+            };
+        }
+
+        const testResults = [
+            testUserAgent(),
+            testWebdriver(),
+            await testPermissions(),
+            testChrome(),
+            testPlugins(),
+            testPluginType(),
+            testLanguages(),
+            testWindow(),
+            await testUserAgentData(),
+            testChromeRuntime(),
+            await testBotD(),
+            await testTimezones(),
+            await testWebWorker(),
+            await testServiceWorker()
+        ];
+
+        testResults.forEach((tr) => {
+            addResultRow(tr);
+        });
+
+        document.querySelector('#test-results-json').innerHTML = JSON.stringify(testResults.map((tr) => { const { id, result } = tr; return { id, result }; }), null, 2);
+        document.querySelector('#botd-fingerprint-json').innerHTML = JSON.stringify(await botd.collect(), null, 2);
+    })();
+</script>
+
+
+</html>
