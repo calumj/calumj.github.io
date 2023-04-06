@@ -147,7 +147,7 @@
             let messages = [];
             Object.keys(browserData).forEach(key => {
                 if (workerData?.[key] !== browserData?.[key]) {
-                    messages.push(`${key} mismatch:<br><b>Browser</b>:${browserData?.[key]}<br><b>Worker</br>:${workerData?.[key]}<br><br>`)
+                    messages.push(`${key} mismatch:<br><b>Browser</b>:${browserData?.[key]}<br><b>Worker</b>:${workerData?.[key]}<br><br>`)
                 }
             })
 
